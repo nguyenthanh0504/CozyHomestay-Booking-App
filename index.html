@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guest Register — Bookings &amp; Check-ins</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #132225;
+    --bg-grad: radial-gradient(1200px 600px at 10% -10%, #1a2e31 0%, #132225 55%);
+    --surface: #1B3236;
+    --surface-raised: #20393e;
+    --card: #FBF7ED;
+    --ink: #ECE6D6;
+    --ink-dim: #9FB3AE;
+    --line: #2E4B4E;
+    --line-soft: #294345;
+    --brass: #CC9F4C;
+    --brass-soft: rgba(204,159,76,0.16);
+    --danger: #D9694F;
+    --ok: #6DBE9C;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg-grad);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 32px 20px 60px;
+  }
+  .hb-shell { max-width: 1080px; margin: 0 auto; }
+
+  .hb-header { margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .hb-eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--brass); margin: 0 0 10px;
+  }
+  .hb-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 40px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .hb-subtitle { color: var(--ink-dim); font-size: 15px; margin: 0; max-width: 640px; }
+
+  .hb-lang-toggle {
+    display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; flex-shrink: 0;
+  }
+  .hb-lang-btn {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    padding: 8px 16px; border: none; background: transparent; color: var(--ink-dim); cursor: pointer;
+  }
+  .hb-lang-btn.active { background: var(--brass); color: #23190A; }
+
+  .hb-rooms { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+  .hb-tag {
+    position: relative; background: var(--surface-raised); border: 1px solid var(--line);
+    border-radius: 16px; padding: 22px; overflow: hidden;
+  }
+  .hb-tag-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+  .hb-tag-name { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; margin: 0 0 4px; }
+  .hb-tag-line {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .hb-tag-price { font-family: 'IBM Plex Mono', monospace; font-size: 19px; color: var(--tag-accent); text-align: right; }
+  .hb-tag-price .hb-price-secondary { display: block; font-size: 11px; color: var(--ink-dim); font-weight: 400; margin-top: 3px; }
+  .hb-status {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 6px 10px;
+    border-radius: 999px; background: var(--tag-accent-soft); color: var(--tag-accent); font-weight: 600;
+  }
+  .hb-status.occupied { background: rgba(217,105,79,0.16); color: var(--danger); }
+
+  .hb-amenities { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .hb-amenity-chip {
+    font-size: 11.5px; color: var(--ink-dim); background: rgba(255,255,255,0.04);
+    border: 1px solid var(--line); padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+  }
+
+  .hb-panel {
+    background: var(--card); color: #241F14; border-radius: 18px; padding: 26px 26px 22px;
+    margin-bottom: 28px; box-shadow: 0 20px 50px -20px rgba(0,0,0,0.5);
+  }
+  .hb-panel-title { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .hb-panel-sub { color: #6B6350; font-size: 13px; margin: 0 0 20px; }
+
+  .hb-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .hb-grid .span-2 { grid-column: span 2; }
+  .hb-field { display: flex; flex-direction: column; gap: 6px; }
+  .hb-field label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #7A7259;
+  }
+  .hb-field label .hb-label-note { text-transform: none; font-weight: 400; }
+  .hb-field input, .hb-field select {
+    font-family: 'Inter', sans-serif; font-size: 14px; padding: 10px 12px; border-radius: 9px;
+    border: 1.5px solid #E1D9C0; background: #FFFDF7; color: #241F14; outline: none;
+    transition: border-color 0.15s; width: 100%;
+  }
+  .hb-field input:focus, .hb-field select:focus { border-color: var(--brass); }
+  .hb-field-hint { font-size: 12px; color: #8A806A; margin: 2px 0 0; }
+
+  .hb-room-choice { display: flex; gap: 8px; }
+  .hb-room-btn {
+    flex: 1; padding: 10px 8px; border-radius: 9px; border: 1.5px solid #E1D9C0; background: #FFFDF7;
+    font-size: 13px; font-weight: 600; cursor: pointer; color: #4C4636; font-family: 'Inter', sans-serif;
+    line-height: 1.4;
+  }
+  .hb-room-btn small { display: block; font-size: 11px; font-weight: 400; opacity: 0.8; }
+  .hb-room-btn.active { border-color: var(--room-accent); background: var(--room-accent-soft); color: var(--room-accent); }
+
+  .hb-social-row { display: flex; gap: 8px; }
+  .hb-social-row select {
+    flex: 0 0 168px; font-family: 'Inter', sans-serif; font-size: 14px; padding: 10px 10px;
+    border-radius: 9px; border: 1.5px solid #E1D9C0; background: #FFFDF7; color: #241F14; outline: none;
+  }
+  .hb-social-row input {
+    flex: 1; font-family: 'Inter', sans-serif; font-size: 14px; padding: 10px 12px;
+    border-radius: 9px; border: 1.5px solid #E1D9C0; background: #FFFDF7; color: #241F14; outline: none;
+  }
+  .hb-social-row input:disabled { background: #F0EBDA; color: #A69C82; cursor: not-allowed; }
+  .hb-social-row select:focus, .hb-social-row input:focus { border-color: var(--brass); }
+
+  .hb-contact-badge {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700;
+    padding: 2px 7px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.02em; margin-right: 6px;
+  }
+  .hb-contact-badge.zalo { background: rgba(0,104,255,0.16); color: #4C9AFF; }
+  .hb-contact-badge.instagram { background: rgba(225,48,108,0.16); color: #E1306C; }
+  .hb-contact-badge.messenger { background: rgba(0,132,255,0.16); color: #3FA2FF; }
+
+  .hb-preview {
+    margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: #F3EDD9;
+    display: flex; flex-wrap: wrap; gap: 22px; align-items: center; font-size: 13.5px;
+  }
+  .hb-preview strong { font-family: 'IBM Plex Mono', monospace; }
+  .hb-preview .hb-price-secondary { display: block; font-size: 11px; color: #8A806A; }
+  .hb-preview .discount-pill { background: var(--ok); color: #0E2A20; font-weight: 700; font-size: 11px; padding: 3px 9px; border-radius: 999px; }
+
+  .hb-error {
+    margin-top: 14px; background: rgba(217,105,79,0.12); border: 1px solid rgba(217,105,79,0.4);
+    color: #A83F26; padding: 10px 14px; border-radius: 10px; font-size: 13px;
+  }
+
+  .hb-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .hb-btn {
+    font-family: 'Inter', sans-serif; font-weight: 600; font-size: 14px; padding: 11px 20px;
+    border-radius: 9px; border: none; cursor: pointer; display: inline-flex; align-items: center;
+    gap: 7px; transition: transform 0.1s, opacity 0.15s;
+  }
+  .hb-btn:active { transform: scale(0.98); }
+  .hb-btn-primary { background: #1F3330; color: #EFE9D4; }
+  .hb-btn-primary:hover { opacity: 0.9; }
+  .hb-btn-ghost { background: transparent; color: #6B6350; border: 1.5px solid #E1D9C0; }
+
+  .hb-sync-banner {
+    background: rgba(217,105,79,0.12); border: 1px solid rgba(217,105,79,0.4); color: #E39B87;
+    padding: 10px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; align-items: center;
+  }
+
+  .hb-ledger-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .hb-ledger-title { font-family: 'Fraunces', serif; font-size: 22px; margin: 0; }
+  .hb-toolbar { display: flex; gap: 10px; align-items: center; }
+  .hb-search { display: flex; align-items: center; gap: 8px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .hb-search input { background: transparent; border: none; outline: none; color: var(--ink); font-size: 13.5px; width: 180px; font-family: 'Inter', sans-serif; }
+  .hb-search input::placeholder { color: var(--ink-dim); }
+  .hb-export-btn {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--brass); color: #23190A;
+    border: none; font-weight: 700; font-size: 13.5px; padding: 10px 16px; border-radius: 9px;
+    cursor: pointer; font-family: 'Inter', sans-serif;
+  }
+  .hb-export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .hb-table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  table.hb-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .hb-table thead th {
+    text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-dim); padding: 14px 16px; border-bottom: 1px solid var(--line);
+  }
+  .hb-table tbody tr { border-bottom: 1px solid var(--line-soft); }
+  .hb-table tbody tr:last-child { border-bottom: none; }
+  .hb-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .hb-table td { padding: 13px 16px; vertical-align: middle; }
+  .hb-guest-name { font-weight: 600; }
+  .hb-sub { color: var(--ink-dim); font-size: 12px; margin-top: 2px; }
+  .hb-room-pill { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px; }
+  .hb-nights { font-family: 'IBM Plex Mono', monospace; }
+  .hb-total { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+  .hb-row-actions { display: flex; gap: 6px; }
+  .hb-icon-btn { background: transparent; border: 1px solid var(--line); color: var(--ink-dim); border-radius: 7px; padding: 6px; cursor: pointer; display: inline-flex; font-size: 15px; }
+  .hb-icon-btn:hover { color: var(--ink); border-color: var(--brass); }
+  .hb-icon-btn.danger:hover { color: var(--danger); border-color: var(--danger); }
+
+  .hb-stage-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+  .hb-stage-pill.upcoming { background: var(--brass-soft); color: var(--brass); }
+  .hb-stage-pill.checked-in { background: rgba(109,190,156,0.18); color: var(--ok); }
+  .hb-stage-pill.checked-out { background: rgba(159,179,174,0.18); color: var(--ink-dim); }
+  .hb-stage-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .hb-stage-btn { font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 700; border: none; cursor: pointer; padding: 5px 9px; border-radius: 7px; white-space: nowrap; }
+  .hb-stage-btn.checkin { background: var(--ok); color: #0E2A20; }
+  .hb-stage-btn.checkout { background: var(--brass); color: #23190A; }
+
+  .hb-empty { padding: 50px 20px; text-align: center; color: var(--ink-dim); }
+
+  .hb-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 22px; }
+  .hb-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .hb-stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 6px; }
+  .hb-stat-value { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; }
+  .hb-stat-value small { display: block; font-size: 12px; color: var(--ink-dim); font-weight: 400; font-family: 'Inter', sans-serif; margin-top: 2px; }
+
+  .hb-toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1F3330; color: #EFE9D4;
+    border: 1px solid var(--brass); padding: 11px 20px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 50;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .hb-toast.show { opacity: 1; }
+
+  .hb-note { margin-top: 18px; font-size: 12.5px; color: var(--ink-dim); text-align: center; }
+
+  @media (max-width: 760px) {
+    .hb-rooms { grid-template-columns: 1fr; }
+    .hb-grid { grid-template-columns: 1fr 1fr; }
+    .hb-title { font-size: 30px; }
+    .hb-table-wrap { overflow-x: auto; }
+    table.hb-table { min-width: 760px; }
+    .hb-stats { grid-template-columns: 1fr; }
+    .hb-ledger-head { align-items: stretch; }
+    .hb-toolbar { width: 100%; justify-content: space-between; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hb-shell">
+  <div class="hb-header">
+    <div>
+      <p class="hb-eyebrow" id="t-eyebrow"></p>
+      <h1 class="hb-title" id="t-title"></h1>
+      <p class="hb-subtitle" id="t-subtitle"></p>
+    </div>
+    <div class="hb-lang-toggle">
+      <button type="button" class="hb-lang-btn" id="lang-en" data-lang="en">EN</button>
+      <button type="button" class="hb-lang-btn" id="lang-vi" data-lang="vi">VI</button>
+    </div>
+  </div>
+
+  <div class="hb-rooms" id="hb-rooms"></div>
+
+  <form class="hb-panel" id="hb-form">
+    <h2 class="hb-panel-title" id="t-panelTitle"></h2>
+    <p class="hb-panel-sub" id="t-panelSub"></p>
+
+    <div class="hb-grid">
+      <div class="hb-field span-2">
+        <label id="t-labelGuestName"></label>
+        <input type="text" id="f-guestName" />
+      </div>
+      <div class="hb-field">
+        <label id="t-labelPhone"></label>
+        <input type="tel" id="f-phone" />
+      </div>
+      <div class="hb-field">
+        <label id="t-labelCountry"></label>
+        <input type="text" id="f-country" />
+      </div>
+
+      <div class="hb-field" style="grid-column: span 4;">
+        <label><span id="t-labelSocial"></span> <span class="hb-label-note" id="t-labelSocialHint"></span></label>
+        <div class="hb-social-row">
+          <select id="f-socialMethod">
+            <option value="" id="opt-social-none"></option>
+            <option value="zalo">Zalo</option>
+            <option value="instagram">Instagram</option>
+            <option value="messenger">Facebook Messenger</option>
+          </select>
+          <input type="text" id="f-socialHandle" disabled />
+        </div>
+      </div>
+
+      <div class="hb-field span-2">
+        <label id="t-labelRoom"></label>
+        <div class="hb-room-choice" id="hb-room-choice"></div>
+      </div>
+      <div class="hb-field">
+        <label id="t-labelGuests"></label>
+        <input type="number" id="f-guests" min="1" value="1" />
+      </div>
+      <div class="hb-field"></div>
+
+      <div class="hb-field">
+        <label id="t-labelCheckIn"></label>
+        <input type="date" id="f-checkIn" />
+        <p class="hb-field-hint" id="t-hintCheckIn"></p>
+      </div>
+      <div class="hb-field">
+        <label id="t-labelCheckOut"></label>
+        <input type="date" id="f-checkOut" />
+        <p class="hb-field-hint" id="t-hintCheckOut"></p>
+      </div>
+      <div class="hb-field span-2"></div>
+    </div>
+
+    <div class="hb-preview" id="hb-preview" style="display:none;"></div>
+    <div class="hb-error" id="hb-error" style="display:none;"></div>
+
+    <div class="hb-actions">
+      <button type="submit" class="hb-btn hb-btn-primary" id="hb-submit-btn"></button>
+      <button type="button" class="hb-btn hb-btn-ghost" id="hb-cancel-btn" style="display:none;"></button>
+    </div>
+  </form>
+
+  <div id="hb-sync-banner" class="hb-sync-banner" style="display:none;"></div>
+
+  <div class="hb-ledger-head">
+    <h2 class="hb-ledger-title" id="t-ledgerTitle"></h2>
+    <div class="hb-toolbar">
+      <div class="hb-search">
+        🔍 <input type="text" id="hb-search-input" />
+      </div>
+      <button class="hb-icon-btn" id="hb-refresh-btn" type="button">⟳</button>
+      <button class="hb-export-btn" id="hb-export-btn" type="button"></button>
+    </div>
+  </div>
+
+  <div class="hb-table-wrap" id="hb-table-wrap"></div>
+
+  <div class="hb-stats" id="hb-stats"></div>
+
+  <p class="hb-note" id="t-footerNote"></p>
+</div>
+
+<div class="hb-toast" id="hb-toast"></div>
+
+<script>
+  // ---------- i18n ----------
+  const I18N = {
+    en: {
+      eyebrow: 'Guest Register',
+      title: 'Bookings &amp; Check-ins',
+      subtitle: '2 rooms on the books — Cozy Suite &amp; Relaxation Suite. Check-in from 3:00 PM, check-out by 11:00 AM. Every entry syncs automatically.',
+      perNight: '/ night',
+      amenity_wifi: 'Wi-Fi access', amenity_guestsCozy: 'Up to 2 guests', amenity_guestsRelax: '2–4 guests',
+      amenity_bedCozy: '1 bed', amenity_bedRelax: '2 beds (1 queen, 1 single)', amenity_tv: 'TV',
+      amenity_kitchen: 'Private kitchen', amenity_laundry: 'Private washer &amp; dryer', amenity_fridge: 'Fridge', amenity_elevator: 'Elevator access',
+      taglineCozy: 'Small room', taglineRelax: 'Big room',
+      formTitleNew: '＋ New booking', formTitleEdit: '✎ Edit booking',
+      formSub: "Fill in the guest's details — nightly rate and stay-long discount are applied automatically.",
+      labelGuestName: 'Guest name', labelPhone: 'Phone number', labelCountry: 'Country',
+      labelSocial: 'Social contact', labelSocialHint: '(optional — for guests without a phone)',
+      socialNone: 'No social contact', socialHandlePh: 'Username, ID, or link',
+      zaloPh: 'Zalo phone or ID', igPh: '@username', mePh: 'm.me/username or name',
+      labelRoom: 'Room', labelGuests: 'Guests', labelCheckIn: 'Check-in', labelCheckOut: 'Check-out',
+      hintCheckIn: 'From 3:00 PM', hintCheckOut: 'By 11:00 AM',
+      base: 'Base', discountPill: '10% long-stay discount', total: 'Total',
+      btnAdd: '✓ Add booking', btnSave: '✓ Save changes', btnCancel: '✕ Cancel',
+      errGuestName: 'Guest name is required.',
+      errContact: 'Add a phone number or a social contact (Zalo, Instagram, or Messenger) so you can reach the guest.',
+      errSocialHandle: 'Add a username, ID, or link for the selected platform.',
+      errCountry: 'Country is required.',
+      errDates: 'Both check-in and check-out dates are required.',
+      errNights: 'Check-out must be after check-in.',
+      errGuests: 'Number of guests must be at least 1.',
+      errOverlap: ' is already booked for part of that date range.',
+      ledgerTitle: 'Ledger', searchPh: 'Search guest, room, country…', exportBtn: '⬇ Export Excel',
+      colGuest: 'Guest', colContact: 'Contact', colRoom: 'Room', colStay: 'Stay', colNights: 'Nights',
+      colGuests: 'Guests', colTotal: 'Total', colStatus: 'Status',
+      emptyNone: 'No bookings yet — add the first one above.', emptySearch: 'No bookings match your search.',
+      statTotalBookings: 'Total bookings', statTotalRevenue: 'Total revenue', statCheckedIn: 'Checked in right now',
+      toastAdded: 'Booking added.', toastUpdated: 'Booking updated.', toastRemoved: 'Booking removed.',
+      toastCheckedInSuffix: ' checked in.', toastCheckedOutSuffix: ' checked out.', toastExport: 'Exported to Excel.',
+      toastSaveFail: "Couldn't save to the shared sheet — check your connection.",
+      toastDeleteFail: "Couldn't delete on the shared sheet — check your connection.",
+      syncNotConnected: 'Not connected yet — paste your Apps Script Web App URL into API_URL near the top of the script.',
+      syncError: "Couldn't reach the shared sheet — showing the last data loaded.",
+      footerNote: 'Shared with everyone — data lives in your Google Sheet, not this browser. Refreshes automatically every 20 seconds.',
+      checkInBtn: 'Check in', checkOutBtn: 'Check out',
+      stageUpcoming: '🕓 Upcoming', stageCheckedIn: '🟢 Checked in', stageCheckedOut: '⚪ Checked out',
+      statusAvailable: '🔓 Available today', statusArrivingSuffix: ' arriving today', statusOccupiedPrefix: '🔒 Checked in — ', statusOccupiedMid: ' until '
+    },
+    vi: {
+      eyebrow: 'Sổ Đăng Ký Khách',
+      title: 'Đặt Phòng &amp; Nhận/Trả Phòng',
+      subtitle: '2 phòng — Cozy Suite &amp; Relaxation Suite. Nhận phòng từ 15:00, trả phòng trước 11:00. Mọi thông tin được đồng bộ tự động.',
+      perNight: '/ đêm',
+      amenity_wifi: 'Wi-Fi', amenity_guestsCozy: 'Tối đa 2 khách', amenity_guestsRelax: '2–4 khách',
+      amenity_bedCozy: '1 giường', amenity_bedRelax: '2 giường (1 giường queen, 1 giường đơn)', amenity_tv: 'TV',
+      amenity_kitchen: 'Bếp riêng', amenity_laundry: 'Máy giặt &amp; sấy riêng', amenity_fridge: 'Tủ lạnh', amenity_elevator: 'Thang máy',
+      taglineCozy: 'Phòng nhỏ', taglineRelax: 'Phòng lớn',
+      formTitleNew: '＋ Đặt phòng mới', formTitleEdit: '✎ Chỉnh sửa đặt phòng',
+      formSub: 'Nhập thông tin khách — giá phòng và giảm giá cho khách ở dài ngày sẽ được tự động áp dụng.',
+      labelGuestName: 'Tên khách', labelPhone: 'Số điện thoại', labelCountry: 'Quốc gia',
+      labelSocial: 'Liên hệ mạng xã hội', labelSocialHint: '(không bắt buộc — dành cho khách không dùng điện thoại)',
+      socialNone: 'Không có', socialHandlePh: 'Tên người dùng, ID, hoặc liên kết',
+      zaloPh: 'Số điện thoại hoặc ID Zalo', igPh: '@tên người dùng', mePh: 'm.me/tên người dùng',
+      labelRoom: 'Phòng', labelGuests: 'Số khách', labelCheckIn: 'Nhận phòng', labelCheckOut: 'Trả phòng',
+      hintCheckIn: 'Từ 15:00', hintCheckOut: 'Trước 11:00',
+      base: 'Giá gốc', discountPill: 'Giảm 10% cho khách ở dài ngày', total: 'Tổng cộng',
+      btnAdd: '✓ Thêm đặt phòng', btnSave: '✓ Lưu thay đổi', btnCancel: '✕ Hủy',
+      errGuestName: 'Vui lòng nhập tên khách.',
+      errContact: 'Vui lòng thêm số điện thoại hoặc liên hệ mạng xã hội (Zalo, Instagram, hoặc Messenger).',
+      errSocialHandle: 'Vui lòng nhập tên người dùng, ID, hoặc liên kết cho nền tảng đã chọn.',
+      errCountry: 'Vui lòng nhập quốc gia.',
+      errDates: 'Vui lòng nhập cả ngày nhận phòng và trả phòng.',
+      errNights: 'Ngày trả phòng phải sau ngày nhận phòng.',
+      errGuests: 'Số khách phải ít nhất là 1.',
+      errOverlap: ' đã được đặt trong khoảng thời gian này.',
+      ledgerTitle: 'Sổ Đặt Phòng', searchPh: 'Tìm khách, phòng, quốc gia…', exportBtn: '⬇ Xuất Excel',
+      colGuest: 'Khách', colContact: 'Liên hệ', colRoom: 'Phòng', colStay: 'Thời gian ở', colNights: 'Số đêm',
+      colGuests: 'Số khách', colTotal: 'Tổng cộng', colStatus: 'Trạng thái',
+      emptyNone: 'Chưa có đặt phòng nào — hãy thêm đặt phòng đầu tiên ở trên.', emptySearch: 'Không tìm thấy đặt phòng phù hợp.',
+      statTotalBookings: 'Tổng số đặt phòng', statTotalRevenue: 'Tổng doanh thu', statCheckedIn: 'Đang nhận phòng',
+      toastAdded: 'Đã thêm đặt phòng.', toastUpdated: 'Đã cập nhật đặt phòng.', toastRemoved: 'Đã xóa đặt phòng.',
+      toastCheckedInSuffix: ' đã nhận phòng.', toastCheckedOutSuffix: ' đã trả phòng.', toastExport: 'Đã xuất file Excel.',
+      toastSaveFail: 'Không thể lưu vào Google Sheet — kiểm tra kết nối của bạn.',
+      toastDeleteFail: 'Không thể xóa trên Google Sheet — kiểm tra kết nối của bạn.',
+      syncNotConnected: 'Chưa kết nối — dán URL Apps Script Web App vào biến API_URL ở đầu tập lệnh.',
+      syncError: 'Không thể kết nối với Google Sheet — đang hiển thị dữ liệu gần nhất.',
+      footerNote: 'Dữ liệu dùng chung — được lưu trong Google Sheet, không phải trên trình duyệt này. Tự động làm mới mỗi 20 giây.',
+      checkInBtn: 'Nhận phòng', checkOutBtn: 'Trả phòng',
+      stageUpcoming: '🕓 Sắp tới', stageCheckedIn: '🟢 Đã nhận phòng', stageCheckedOut: '⚪ Đã trả phòng',
+      statusAvailable: '🔓 Còn trống hôm nay', statusArrivingSuffix: ' sẽ đến hôm nay', statusOccupiedPrefix: '🔒 Đã nhận phòng — ', statusOccupiedMid: ' đến '
+    }
+  };
+  let lang = 'en';
+  const t = (key) => I18N[lang][key] || '';
+
+  // ---------- Config ----------
+  const ROOMS = {
+    cozy: {
+      key: 'cozy', name: 'Cozy Suite', price: 60, priceVND: 1300000,
+      accent: '#D98255', accentSoft: 'rgba(217,130,85,0.16)',
+      amenityKeys: ['wifi', 'guestsCozy', 'bedCozy', 'tv', 'kitchen', 'laundry', 'fridge', 'elevator'],
+      icons: { wifi: '📶', guestsCozy: '👥', bedCozy: '🛏️', tv: '📺', kitchen: '🍳', laundry: '🧺', fridge: '🧊', elevator: '🛗' }
+    },
+    relaxation: {
+      key: 'relaxation', name: 'Relaxation Suite', price: 80, priceVND: 1500000,
+      accent: '#5FA98C', accentSoft: 'rgba(95,169,140,0.16)',
+      amenityKeys: ['wifi', 'guestsRelax', 'bedRelax', 'tv', 'kitchen', 'laundry', 'fridge', 'elevator'],
+      icons: { wifi: '📶', guestsRelax: '👥', bedRelax: '🛏️', tv: '📺', kitchen: '🍳', laundry: '🧺', fridge: '🧊', elevator: '🛗' }
+    }
+  };
+  // ⬇️ PASTE your Apps Script Web App URL here after deploying (see setup instructions).
+  const API_URL = ' https://script.google.com/macros/s/AKfycbycivsFuoSrHYar7f7QkdPu4XogNLKxgx4bEVZMmsraw2EsgyWc5-bxPNUNTZFjGXAk1g/exec';
+  const DISCOUNT_THRESHOLD_NIGHTS = 5;
+  const DISCOUNT_RATE = 0.1;
+  const AUTO_REFRESH_MS = 20000;
+
+  // ---------- Helpers ----------
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const nightsBetween = (ci, co) => {
+    if (!ci || !co) return 0;
+    const a = new Date(ci + 'T00:00:00'), b = new Date(co + 'T00:00:00');
+    const d = Math.round((b - a) / 86400000);
+    return d > 0 ? d : 0;
+  };
+  const usd = (n) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const vnd = (n) => Math.round(n).toLocaleString('vi-VN') + ' ₫';
+  // Dual-currency line: primary currency follows the active language, secondary shown smaller.
+  const dualPrice = (usdAmt, vndAmt) => lang === 'vi'
+    ? { primary: vnd(vndAmt), secondary: '≈ ' + usd(usdAmt) }
+    : { primary: usd(usdAmt), secondary: '≈ ' + vnd(vndAmt) };
+  const formatDate = (d) => {
+    if (!d) return '—';
+    return new Date(d + 'T00:00:00').toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  const computePrice = (roomKey, nights) => {
+    const room = ROOMS[roomKey];
+    const baseUsd = room.price * nights;
+    const baseVnd = room.priceVND * nights;
+    const discounted = nights > DISCOUNT_THRESHOLD_NIGHTS;
+    const totalUsd = discounted ? baseUsd * (1 - DISCOUNT_RATE) : baseUsd;
+    const totalVnd = discounted ? baseVnd * (1 - DISCOUNT_RATE) : baseVnd;
+    return { baseUsd, baseVnd, discounted, totalUsd, totalVnd };
+  };
+  const uid = () => 'bk_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+  const rangesOverlap = (aS, aE, bS, bE) => new Date(aS) < new Date(bE) && new Date(bS) < new Date(aE);
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+  }
+
+  // ---------- State ----------
+  let bookings = [];
+  let editingId = null;
+  let search = '';
+  let selectedRoom = 'cozy';
+  let lastSyncError = '';
+
+  const NUMERIC_FIELDS = ['guests', 'nights', 'pricePerNight', 'pricePerNightVND', 'total', 'totalVND'];
+  const BOOL_FIELDS = ['discounted'];
+
+  function normalizeRow(row) {
+    const r = { ...row };
+    NUMERIC_FIELDS.forEach((f) => { if (r[f] !== undefined && r[f] !== '') r[f] = Number(r[f]); });
+    BOOL_FIELDS.forEach((f) => { r[f] = r[f] === true || r[f] === 'TRUE' || r[f] === 'true'; });
+    return r;
+  }
+
+  async function loadBookings(showSpinner) {
+    if (API_URL.includes('PASTE_YOUR_WEB_APP_URL_HERE')) {
+      lastSyncError = t('syncNotConnected');
+      renderSyncBanner();
+      return;
+    }
+    try {
+      const res = await fetch(API_URL, { method: 'GET' });
+      if (!res.ok) throw new Error('Request failed: ' + res.status);
+      const data = await res.json();
+      bookings = data.map(normalizeRow);
+      bookings.forEach((b) => { if (!b.status) b.status = 'upcoming'; });
+      lastSyncError = '';
+      renderAll();
+    } catch (e) {
+      lastSyncError = t('syncError');
+    } finally {
+      renderSyncBanner();
+    }
+  }
+
+  async function persistUpsert(record) {
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'upsert', record })
+      });
+      return true;
+    } catch (e) {
+      showToast(t('toastSaveFail'));
+      return false;
+    }
+  }
+
+  async function persistDelete(id) {
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'delete', id })
+      });
+      return true;
+    } catch (e) {
+      showToast(t('toastDeleteFail'));
+      return false;
+    }
+  }
+
+  function renderSyncBanner() {
+    const el = document.getElementById('hb-sync-banner');
+    if (!el) return;
+    if (lastSyncError) {
+      el.style.display = 'flex';
+      el.textContent = '⚠ ' + lastSyncError;
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  // ---------- Toast ----------
+  let toastTimer = null;
+  function showToast(msg) {
+    const el = document.getElementById('hb-toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+  }
+
+  // ---------- Room status ----------
+  function getRoomStatus() {
+    const today = todayStr();
+    const status = {};
+    Object.keys(ROOMS).forEach((rk) => {
+      const checkedIn = bookings.find((b) => b.roomKey === rk && b.status === 'checked-in' && b.id !== editingId);
+      if (checkedIn) { status[rk] = { state: 'occupied', guest: checkedIn.guestName, until: checkedIn.checkOut }; return; }
+      const arriving = bookings.find((b) => b.roomKey === rk && b.status === 'upcoming' && b.checkIn === today && b.id !== editingId);
+      if (arriving) { status[rk] = { state: 'arriving', guest: arriving.guestName }; return; }
+      status[rk] = { state: 'available' };
+    });
+    return status;
+  }
+
+  // ---------- Render: rooms ----------
+  function renderRooms() {
+    const status = getRoomStatus();
+    const el = document.getElementById('hb-rooms');
+    el.innerHTML = Object.values(ROOMS).map((room) => {
+      const s = status[room.key];
+      let statusHtml;
+      if (s.state === 'occupied') {
+        statusHtml = `<span class="hb-status occupied">${t('statusOccupiedPrefix')}${escapeHtml(s.guest)}${t('statusOccupiedMid')}${formatDate(s.until)}</span>`;
+      } else if (s.state === 'arriving') {
+        statusHtml = `<span class="hb-status" style="background:var(--brass-soft);color:var(--brass)">🕓 ${escapeHtml(s.guest)}${t('statusArrivingSuffix')}</span>`;
+      } else {
+        statusHtml = `<span class="hb-status">${t('statusAvailable')}</span>`;
+      }
+      const price = dualPrice(room.price, room.priceVND);
+      const tagline = room.key === 'cozy' ? t('taglineCozy') : t('taglineRelax');
+      const amenitiesHtml = room.amenityKeys.map((k) => `<span class="hb-amenity-chip">${room.icons[k]} ${t('amenity_' + k)}</span>`).join('');
+      return `
+        <div class="hb-tag" style="--tag-accent:${room.accent};--tag-accent-soft:${room.accentSoft}">
+          <div class="hb-tag-top">
+            <div>
+              <p class="hb-tag-name">${room.name}</p>
+              <p class="hb-tag-line">${tagline}</p>
+            </div>
+            <div class="hb-tag-price">${price.primary} ${t('perNight')}<span class="hb-price-secondary">${price.secondary}</span></div>
+          </div>
+          ${statusHtml}
+          <div class="hb-amenities">${amenitiesHtml}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // ---------- Render: room choice buttons ----------
+  function renderRoomChoice() {
+    const el = document.getElementById('hb-room-choice');
+    el.innerHTML = Object.values(ROOMS).map((room) => {
+      const price = dualPrice(room.price, room.priceVND);
+      return `
+      <button type="button" class="hb-room-btn ${selectedRoom === room.key ? 'active' : ''}"
+        style="--room-accent:${room.accent};--room-accent-soft:${room.accentSoft}"
+        data-room="${room.key}">${room.name}<small>${price.primary}</small></button>
+    `;
+    }).join('');
+    el.querySelectorAll('.hb-room-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectedRoom = btn.dataset.room;
+        renderRoomChoice();
+        updatePreview();
+      });
+    });
+  }
+
+  // ---------- Live preview ----------
+  function updatePreview() {
+    const ci = document.getElementById('f-checkIn').value;
+    const co = document.getElementById('f-checkOut').value;
+    const nights = nightsBetween(ci, co);
+    const previewEl = document.getElementById('hb-preview');
+    if (nights <= 0) { previewEl.style.display = 'none'; return; }
+    const { discounted, totalUsd, totalVnd } = computePrice(selectedRoom, nights);
+    const price = dualPrice(totalUsd, totalVnd);
+    previewEl.style.display = 'flex';
+    previewEl.innerHTML = `
+      <span>🌙 <strong>${nights}</strong></span>
+      ${discounted ? `<span class="discount-pill">${t('discountPill')}</span>` : ''}
+      <span>${t('total')}: <strong>${price.primary}</strong><span class="hb-price-secondary">${price.secondary}</span></span>
+    `;
+  }
+
+  // ---------- Table data ----------
+  function getFiltered() {
+    const q = search.trim().toLowerCase();
+    let list = [...bookings].sort((a, b) => (a.checkIn < b.checkIn ? 1 : -1));
+    if (!q) return list;
+    return list.filter((b) =>
+      b.guestName.toLowerCase().includes(q) ||
+      b.country.toLowerCase().includes(q) ||
+      (b.phone || '').toLowerCase().includes(q) ||
+      (b.socialHandle || '').toLowerCase().includes(q) ||
+      ROOMS[b.roomKey].name.toLowerCase().includes(q)
+    );
+  }
+
+  function stagePillHtml(status) {
+    if (status === 'checked-in') return `<span class="hb-stage-pill checked-in">${t('stageCheckedIn')}</span>`;
+    if (status === 'checked-out') return `<span class="hb-stage-pill checked-out">${t('stageCheckedOut')}</span>`;
+    return `<span class="hb-stage-pill upcoming">${t('stageUpcoming')}</span>`;
+  }
+
+  const SOCIAL_BADGE_LABEL = { zalo: 'Zalo', instagram: 'Instagram', messenger: 'Messenger' };
+
+  function renderTable() {
+    const filtered = getFiltered();
+    const wrap = document.getElementById('hb-table-wrap');
+    document.getElementById('hb-export-btn').disabled = filtered.length === 0;
+
+    if (filtered.length === 0) {
+      wrap.innerHTML = `<div class="hb-empty">📅<p>${bookings.length === 0 ? t('emptyNone') : t('emptySearch')}</p></div>`;
+      return;
+    }
+
+    const rows = filtered.map((b) => {
+      const room = ROOMS[b.roomKey];
+      const price = dualPrice(b.total, b.totalVND != null ? b.totalVND : b.total * (room.priceVND / room.price));
+      return `
+        <tr data-id="${b.id}">
+          <td><div class="hb-guest-name">${escapeHtml(b.guestName)}</div></td>
+          <td>
+            ${b.phone ? `<div>📞 ${escapeHtml(b.phone)}</div>` : ''}
+            ${b.socialMethod && b.socialHandle ? `<div class="hb-sub"><span class="hb-contact-badge ${b.socialMethod}">${SOCIAL_BADGE_LABEL[b.socialMethod]}</span>${escapeHtml(b.socialHandle)}</div>` : ''}
+            <div class="hb-sub">🌐 ${escapeHtml(b.country)}</div>
+          </td>
+          <td><span class="hb-room-pill" style="background:${room.accentSoft};color:${room.accent}">${room.name}</span></td>
+          <td>${formatDate(b.checkIn)} → ${formatDate(b.checkOut)}</td>
+          <td class="hb-nights">${b.nights}</td>
+          <td>👥 ${b.guests}</td>
+          <td class="hb-total">
+            ${price.primary}
+            <div class="hb-sub">${price.secondary}</div>
+            ${b.discounted ? `<div class="hb-sub">${t('discountPill')}</div>` : ''}
+          </td>
+          <td>
+            ${stagePillHtml(b.status)}
+            <div class="hb-stage-actions">
+              ${b.status === 'upcoming' ? `<button class="hb-stage-btn checkin" data-action="checkin">${t('checkInBtn')}</button>` : ''}
+              ${b.status === 'checked-in' ? `<button class="hb-stage-btn checkout" data-action="checkout">${t('checkOutBtn')}</button>` : ''}
+            </div>
+          </td>
+          <td>
+            <div class="hb-row-actions">
+              <button class="hb-icon-btn" data-action="edit" title="Edit">✎</button>
+              <button class="hb-icon-btn danger" data-action="delete" title="Delete">🗑</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+      <table class="hb-table">
+        <thead><tr>
+          <th>${t('colGuest')}</th><th>${t('colContact')}</th><th>${t('colRoom')}</th><th>${t('colStay')}</th>
+          <th>${t('colNights')}</th><th>${t('colGuests')}</th><th>${t('colTotal')}</th><th>${t('colStatus')}</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    wrap.querySelectorAll('tr[data-id]').forEach((row) => {
+      const id = row.dataset.id;
+      row.querySelector('[data-action="edit"]').addEventListener('click', () => startEdit(id));
+      row.querySelector('[data-action="delete"]').addEventListener('click', () => removeBooking(id));
+      const checkinBtn = row.querySelector('[data-action="checkin"]');
+      if (checkinBtn) checkinBtn.addEventListener('click', () => markStage(id, 'checked-in'));
+      const checkoutBtn = row.querySelector('[data-action="checkout"]');
+      if (checkoutBtn) checkoutBtn.addEventListener('click', () => markStage(id, 'checked-out'));
+    });
+  }
+
+  async function markStage(id, newStatus) {
+    const b = bookings.find((x) => x.id === id);
+    if (!b) return;
+    b.status = newStatus;
+    renderAll();
+    const ok = await persistUpsert(b);
+    if (ok) showToast(b.guestName + (newStatus === 'checked-in' ? t('toastCheckedInSuffix') : t('toastCheckedOutSuffix')));
+  }
+
+  // ---------- Render: stats ----------
+  function renderStats() {
+    const totalUsd = bookings.reduce((s, b) => s + Number(b.total || 0), 0);
+    const totalVnd = bookings.reduce((s, b) => {
+      const room = ROOMS[b.roomKey];
+      const v = b.totalVND != null ? Number(b.totalVND) : Number(b.total || 0) * (room ? room.priceVND / room.price : 0);
+      return s + v;
+    }, 0);
+    const revenue = dualPrice(totalUsd, totalVnd);
+    const checkedInNow = Object.keys(ROOMS).filter((rk) => bookings.some((b) => b.roomKey === rk && b.status === 'checked-in')).length;
+    document.getElementById('hb-stats').innerHTML = `
+      <div class="hb-stat"><div class="hb-stat-label">${t('statTotalBookings')}</div><div class="hb-stat-value">${bookings.length}</div></div>
+      <div class="hb-stat"><div class="hb-stat-label">${t('statTotalRevenue')}</div><div class="hb-stat-value">${revenue.primary}<small>${revenue.secondary}</small></div></div>
+      <div class="hb-stat"><div class="hb-stat-label">${t('statCheckedIn')}</div><div class="hb-stat-value">${checkedInNow} / 2</div></div>
+    `;
+  }
+
+  function renderAll() {
+    renderRooms();
+    renderTable();
+    renderStats();
+  }
+
+  // ---------- Static text (labels, buttons, placeholders) ----------
+  function applyStaticText() {
+    document.getElementById('t-eyebrow').textContent = t('eyebrow');
+    document.getElementById('t-title').innerHTML = t('title');
+    document.getElementById('t-subtitle').innerHTML = t('subtitle');
+    document.getElementById('t-panelTitle').textContent = editingId ? t('formTitleEdit') : t('formTitleNew');
+    document.getElementById('t-panelSub').textContent = t('formSub');
+    document.getElementById('t-labelGuestName').textContent = t('labelGuestName');
+    document.getElementById('t-labelPhone').textContent = t('labelPhone');
+    document.getElementById('t-labelCountry').textContent = t('labelCountry');
+    document.getElementById('t-labelSocial').textContent = t('labelSocial');
+    document.getElementById('t-labelSocialHint').textContent = t('labelSocialHint');
+    document.getElementById('opt-social-none').textContent = t('socialNone');
+    document.getElementById('t-labelRoom').textContent = t('labelRoom');
+    document.getElementById('t-labelGuests').textContent = t('labelGuests');
+    document.getElementById('t-labelCheckIn').textContent = t('labelCheckIn');
+    document.getElementById('t-labelCheckOut').textContent = t('labelCheckOut');
+    document.getElementById('t-hintCheckIn').textContent = t('hintCheckIn');
+    document.getElementById('t-hintCheckOut').textContent = t('hintCheckOut');
+    document.getElementById('t-ledgerTitle').textContent = t('ledgerTitle');
+    document.getElementById('t-footerNote').textContent = t('footerNote');
+    document.getElementById('hb-submit-btn').textContent = editingId ? t('btnSave') : t('btnAdd');
+    document.getElementById('hb-cancel-btn').textContent = t('btnCancel');
+    document.getElementById('hb-export-btn').textContent = t('exportBtn');
+    document.getElementById('hb-search-input').placeholder = t('searchPh');
+    document.getElementById('f-guestName').placeholder = lang === 'vi' ? 'vd: Nguyễn Văn A' : 'e.g. Amara Okafor';
+    document.getElementById('f-phone').placeholder = lang === 'vi' ? '090 123 4567' : '+1 555 010 2938';
+    document.getElementById('f-country').placeholder = lang === 'vi' ? 'Việt Nam' : 'Canada';
+    const handleInput = document.getElementById('f-socialHandle');
+    const method = document.getElementById('f-socialMethod').value;
+    handleInput.placeholder = method ? (method === 'zalo' ? t('zaloPh') : method === 'instagram' ? t('igPh') : t('mePh')) : t('socialHandlePh');
+    document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+    document.getElementById('lang-vi').classList.toggle('active', lang === 'vi');
+    renderSyncBanner();
+  }
+
+  function setLanguage(newLang) {
+    lang = newLang;
+    applyStaticText();
+    renderRoomChoice();
+    updatePreview();
+    renderAll();
+  }
+  document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
+  document.getElementById('lang-vi').addEventListener('click', () => setLanguage('vi'));
+
+  // ---------- Form handling ----------
+  function resetForm() {
+    document.getElementById('f-guestName').value = '';
+    document.getElementById('f-phone').value = '';
+    document.getElementById('f-country').value = '';
+    document.getElementById('f-socialMethod').value = '';
+    const handleInput = document.getElementById('f-socialHandle');
+    handleInput.value = '';
+    handleInput.disabled = true;
+    document.getElementById('f-guests').value = 1;
+    document.getElementById('f-checkIn').value = '';
+    document.getElementById('f-checkOut').value = '';
+    selectedRoom = 'cozy';
+    editingId = null;
+    renderRoomChoice();
+    updatePreview();
+    hideError();
+    applyStaticText();
+    document.getElementById('hb-cancel-btn').style.display = 'none';
+    renderRooms();
+  }
+
+  function startEdit(id) {
+    const b = bookings.find((x) => x.id === id);
+    if (!b) return;
+    document.getElementById('f-guestName').value = b.guestName;
+    document.getElementById('f-phone').value = b.phone;
+    document.getElementById('f-country').value = b.country;
+    document.getElementById('f-socialMethod').value = b.socialMethod || '';
+    const handleInput = document.getElementById('f-socialHandle');
+    handleInput.value = b.socialHandle || '';
+    handleInput.disabled = !b.socialMethod;
+    document.getElementById('f-guests').value = b.guests;
+    document.getElementById('f-checkIn').value = b.checkIn;
+    document.getElementById('f-checkOut').value = b.checkOut;
+    selectedRoom = b.roomKey;
+    editingId = id;
+    renderRoomChoice();
+    updatePreview();
+    hideError();
+    applyStaticText();
+    document.getElementById('hb-cancel-btn').style.display = 'inline-flex';
+    renderRooms();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function removeBooking(id) {
+    const previous = bookings;
+    bookings = bookings.filter((b) => b.id !== id);
+    if (editingId === id) resetForm();
+    renderAll();
+    const ok = await persistDelete(id);
+    if (ok) { showToast(t('toastRemoved')); } else { bookings = previous; renderAll(); }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('hb-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError() { document.getElementById('hb-error').style.display = 'none'; }
+
+  document.getElementById('hb-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+
+    const guestName = document.getElementById('f-guestName').value.trim();
+    const phone = document.getElementById('f-phone').value.trim();
+    const country = document.getElementById('f-country').value.trim();
+    const socialMethod = document.getElementById('f-socialMethod').value;
+    const socialHandle = document.getElementById('f-socialHandle').value.trim();
+    const guests = Number(document.getElementById('f-guests').value);
+    const checkIn = document.getElementById('f-checkIn').value;
+    const checkOut = document.getElementById('f-checkOut').value;
+    const nights = nightsBetween(checkIn, checkOut);
+
+    if (!guestName) return showError(t('errGuestName'));
+    if (!phone && !(socialMethod && socialHandle)) return showError(t('errContact'));
+    if (socialMethod && !socialHandle) return showError(t('errSocialHandle'));
+    if (!country) return showError(t('errCountry'));
+    if (!checkIn || !checkOut) return showError(t('errDates'));
+    if (nights <= 0) return showError(t('errNights'));
+    if (!guests || guests < 1) return showError(t('errGuests'));
+
+    const overlap = bookings.some((b) => b.roomKey === selectedRoom && b.id !== editingId && rangesOverlap(checkIn, checkOut, b.checkIn, b.checkOut));
+    if (overlap) return showError(ROOMS[selectedRoom].name + t('errOverlap'));
+
+    const { discounted, totalUsd, totalVnd } = computePrice(selectedRoom, nights);
+    const record = {
+      id: editingId || uid(),
+      guestName, phone, country,
+      socialMethod, socialHandle,
+      roomKey: selectedRoom,
+      checkIn, checkOut, guests, nights,
+      pricePerNight: ROOMS[selectedRoom].price,
+      pricePerNightVND: ROOMS[selectedRoom].priceVND,
+      discounted,
+      total: Math.round(totalUsd * 100) / 100,
+      totalVND: Math.round(totalVnd),
+      status: editingId ? (bookings.find((b) => b.id === editingId)?.status || 'upcoming') : 'upcoming',
+      createdAt: editingId ? (bookings.find((b) => b.id === editingId)?.createdAt || Date.now()) : Date.now()
+    };
+
+    if (editingId) {
+      bookings = bookings.map((b) => (b.id === editingId ? record : b));
+    } else {
+      bookings.push(record);
+    }
+    renderAll();
+    const ok = await persistUpsert(record);
+    if (ok) {
+      showToast(editingId ? t('toastUpdated') : t('toastAdded'));
+      resetForm();
+    } else {
+      await loadBookings(false);
+    }
+  });
+
+  document.getElementById('hb-cancel-btn').addEventListener('click', resetForm);
+
+  document.getElementById('f-socialMethod').addEventListener('change', (e) => {
+    const handleInput = document.getElementById('f-socialHandle');
+    const method = e.target.value;
+    if (method) {
+      handleInput.disabled = false;
+      handleInput.placeholder = method === 'zalo' ? t('zaloPh') : method === 'instagram' ? t('igPh') : t('mePh');
+    } else {
+      handleInput.disabled = true;
+      handleInput.value = '';
+      handleInput.placeholder = t('socialHandlePh');
+    }
+  });
+
+  document.getElementById('f-checkIn').addEventListener('change', () => {
+    document.getElementById('f-checkOut').min = document.getElementById('f-checkIn').value;
+    updatePreview();
+  });
+  document.getElementById('f-checkOut').addEventListener('change', updatePreview);
+
+  document.getElementById('hb-search-input').addEventListener('input', (e) => {
+    search = e.target.value;
+    renderTable();
+  });
+
+  document.getElementById('hb-export-btn').addEventListener('click', () => {
+    const filtered = getFiltered();
+    const rows = filtered.map((b) => ({
+      'Guest Name': b.guestName,
+      'Phone Number': b.phone || '',
+      'Social Platform': b.socialMethod ? SOCIAL_BADGE_LABEL[b.socialMethod] : '',
+      'Social Handle': b.socialHandle || '',
+      'Country': b.country,
+      'Room': ROOMS[b.roomKey].name,
+      'Check-in': b.checkIn,
+      'Check-out': b.checkOut,
+      'Nights': b.nights,
+      'Guests': b.guests,
+      'Price / Night ($)': b.pricePerNight,
+      'Price / Night (₫)': b.pricePerNightVND || '',
+      'Discount Applied': b.discounted ? '10%' : '—',
+      'Total ($)': b.total,
+      'Total (₫)': b.totalVND || '',
+      'Status': b.status === 'checked-in' ? 'Checked in' : b.status === 'checked-out' ? 'Checked out' : 'Upcoming'
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 15 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bookings');
+    XLSX.writeFile(wb, `guest-register-${todayStr()}.xlsx`);
+    showToast(t('toastExport'));
+  });
+
+  document.getElementById('hb-refresh-btn').addEventListener('click', () => loadBookings(true));
+
+  // ---------- Init ----------
+  applyStaticText();
+  renderRoomChoice();
+  renderAll();
+  loadBookings(true);
+  setInterval(() => loadBookings(false), AUTO_REFRESH_MS);
+</script>
+</body>
+</html>
