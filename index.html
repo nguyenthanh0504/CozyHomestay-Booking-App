@@ -439,7 +439,7 @@
     }
   };
   // ⬇️ PASTE your Apps Script Web App URL here after deploying (see setup instructions).
-  const API_URL = ' https://script.google.com/macros/s/AKfycbycivsFuoSrHYar7f7QkdPu4XogNLKxgx4bEVZMmsraw2EsgyWc5-bxPNUNTZFjGXAk1g/exec';
+  const API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
   const DISCOUNT_THRESHOLD_NIGHTS = 5;
   const DISCOUNT_RATE = 0.1;
   const AUTO_REFRESH_MS = 20000;
@@ -488,11 +488,17 @@
 
   const NUMERIC_FIELDS = ['guests', 'nights', 'pricePerNight', 'pricePerNightVND', 'total', 'totalVND'];
   const BOOL_FIELDS = ['discounted'];
+  const DATE_FIELDS = ['checkIn', 'checkOut'];
 
   function normalizeRow(row) {
     const r = { ...row };
     NUMERIC_FIELDS.forEach((f) => { if (r[f] !== undefined && r[f] !== '') r[f] = Number(r[f]); });
     BOOL_FIELDS.forEach((f) => { r[f] = r[f] === true || r[f] === 'TRUE' || r[f] === 'true'; });
+    // Safety net: if a date ever slips through as a full timestamp (e.g.
+    // "2026-08-27T00:00:00.000Z") instead of a plain "2026-08-27", trim it
+    // down so date math doesn't break. The Apps Script backend already
+    // prevents this at the source — this just guards against stale deployments.
+    DATE_FIELDS.forEach((f) => { if (typeof r[f] === 'string' && r[f].length > 10) r[f] = r[f].slice(0, 10); });
     return r;
   }
 
