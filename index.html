@@ -103,6 +103,10 @@
   .hb-confirm-row span:first-child { color: #8A806A; }
   .hb-confirm-ref { font-family: 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 0.04em; }
 
+  .hb-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .hb-result { margin-top: 16px; background: #F3EDD9; border-radius: 12px; padding: 16px 18px; font-size: 14px; }
+  .hb-result-status { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+  .hb-result.notfound { background: rgba(217,105,79,0.12); color: #A83F26; }
   .hb-note { margin-top: 18px; font-size: 12.5px; color: var(--ink-dim); text-align: center; }
 
   @media (max-width: 640px) {
@@ -198,8 +202,26 @@
     <h2 class="hb-confirm-title" id="t-confirmTitle"></h2>
     <p class="hb-confirm-sub" id="t-confirmSub"></p>
     <div class="hb-confirm-card" id="hb-confirm-card"></div>
+    <p class="hb-confirm-sub" id="t-confirmHowTo" style="font-size:13px;"></p>
     <button type="button" class="hb-btn hb-btn-ghost" id="hb-new-booking-btn" style="width:100%;justify-content:center;"></button>
   </div>
+
+  <form class="hb-panel" id="hb-check-form">
+    <h2 class="hb-panel-title" id="t-checkTitle"></h2>
+    <p class="hb-panel-sub" id="t-checkSub"></p>
+    <div class="hb-field-row">
+      <div class="hb-field">
+        <label id="t-labelRef"></label>
+        <input type="text" id="c-ref" autocomplete="off" />
+      </div>
+      <div class="hb-field">
+        <label id="t-labelContact"></label>
+        <input type="text" id="c-contact" autocomplete="off" />
+      </div>
+    </div>
+    <div class="hb-actions"><button type="submit" class="hb-btn hb-btn-primary" id="hb-check-btn"></button></div>
+    <div id="hb-check-result"></div>
+  </form>
 
   <p class="hb-note" id="t-footerNote"></p>
 </div>
@@ -236,6 +258,15 @@
       confirmTitle: 'Request received!', confirmSub: "We've got your request — our front desk will review and confirm it shortly.",
       confirmRef: 'Reference', confirmName: 'Name', confirmRoom: 'Room', confirmStay: 'Stay', confirmGuests: 'Guests', confirmTotal: 'Total',
       confirmStatus: 'Status', confirmPending: '🟡 Pending confirmation',
+      confirmHowTo: 'Keep your reference code. To see whether your request is approved, use "Check my booking" below with this code and the phone or social contact you entered.',
+      checkTitle: 'Check my booking', checkSub: 'Enter your reference code and the phone number or social contact you booked with.',
+      labelRef: 'Reference code', labelContact: 'Phone or social contact', btnCheck: 'Check status',
+      checkNotFound: "We couldn't find a booking matching those details. Please check the code and contact, or reach out to the hotel.",
+      resPending: '🟡 Pending — our front desk is reviewing your request.',
+      resApproved: '✅ Approved — your booking is confirmed.',
+      resCheckedIn: '🟢 Checked in — enjoy your stay!',
+      resCheckedOut: '⚪ Stay completed — thank you for staying with us.',
+      resDeclined: "❌ Declined — sorry, we couldn't confirm these dates. Please try different dates or contact the hotel.",
       btnNewBooking: 'Make another booking',
       footerNote: 'Your booking is sent directly to our front desk.',
       syncNotConnected: 'Booking system is not connected yet — please contact the hotel directly.',
@@ -270,6 +301,15 @@
       confirmTitle: 'Đã nhận yêu cầu!', confirmSub: 'Chúng tôi đã nhận được yêu cầu đặt phòng của bạn — lễ tân sẽ xem xét và xác nhận sớm.',
       confirmRef: 'Mã đặt phòng', confirmName: 'Tên', confirmRoom: 'Phòng', confirmStay: 'Thời gian ở', confirmGuests: 'Số khách', confirmTotal: 'Tổng cộng',
       confirmStatus: 'Trạng thái', confirmPending: '🟡 Chờ xác nhận',
+      confirmHowTo: 'Hãy giữ lại mã đặt phòng. Để biết yêu cầu đã được duyệt chưa, dùng mục "Kiểm tra đặt phòng" bên dưới với mã này và số điện thoại hoặc liên hệ mạng xã hội bạn đã nhập.',
+      checkTitle: 'Kiểm tra đặt phòng', checkSub: 'Nhập mã đặt phòng và số điện thoại hoặc liên hệ mạng xã hội bạn đã dùng khi đặt.',
+      labelRef: 'Mã đặt phòng', labelContact: 'Số điện thoại hoặc liên hệ mạng xã hội', btnCheck: 'Kiểm tra trạng thái',
+      checkNotFound: 'Không tìm thấy đặt phòng khớp với thông tin này. Vui lòng kiểm tra lại mã và thông tin liên hệ, hoặc liên hệ khách sạn.',
+      resPending: '🟡 Chờ duyệt — lễ tân đang xem xét yêu cầu của bạn.',
+      resApproved: '✅ Đã duyệt — đặt phòng của bạn đã được xác nhận.',
+      resCheckedIn: '🟢 Đã nhận phòng — chúc bạn kỳ nghỉ vui vẻ!',
+      resCheckedOut: '⚪ Đã hoàn tất — cảm ơn bạn đã lưu trú.',
+      resDeclined: '❌ Bị từ chối — rất tiếc chúng tôi không thể xác nhận ngày này. Vui lòng thử ngày khác hoặc liên hệ khách sạn.',
       btnNewBooking: 'Đặt phòng khác',
       footerNote: 'Yêu cầu đặt phòng của bạn được gửi trực tiếp đến lễ tân.',
       syncNotConnected: 'Hệ thống đặt phòng chưa được kết nối — vui lòng liên hệ trực tiếp với khách sạn.',
@@ -388,7 +428,7 @@
     Object.keys(ROOMS).forEach((rk) => {
       const checkedIn = bookings.find((b) => b.roomKey === rk && b.status === 'checked-in');
       if (checkedIn) { status[rk] = { state: 'occupied', until: checkedIn.checkOut }; return; }
-      const booked = bookings.find((b) => b.roomKey === rk && b.status !== 'checked-out' && b.checkIn <= today && today < b.checkOut);
+      const booked = bookings.find((b) => b.roomKey === rk && b.status !== 'checked-out' && b.status !== 'declined' && b.checkIn <= today && today < b.checkOut);
       if (booked) { status[rk] = { state: 'booked', until: booked.checkOut }; return; }
       status[rk] = { state: 'available' };
     });
@@ -471,6 +511,12 @@
     document.getElementById('t-confirmSub').textContent = t('confirmSub');
     document.getElementById('hb-new-booking-btn').textContent = t('btnNewBooking');
     document.getElementById('t-footerNote').textContent = t('footerNote');
+    document.getElementById('t-confirmHowTo').textContent = t('confirmHowTo');
+    document.getElementById('t-checkTitle').textContent = t('checkTitle');
+    document.getElementById('t-checkSub').textContent = t('checkSub');
+    document.getElementById('t-labelRef').textContent = t('labelRef');
+    document.getElementById('t-labelContact').textContent = t('labelContact');
+    document.getElementById('hb-check-btn').textContent = t('btnCheck');
     document.getElementById('f-guestName').placeholder = lang === 'vi' ? 'vd: Nguyễn Văn A' : 'e.g. Amara Okafor';
     document.getElementById('f-phone').placeholder = lang === 'vi' ? '090 123 4567' : '+1 555 010 2938';
     document.getElementById('f-country').placeholder = lang === 'vi' ? 'Việt Nam' : 'Canada';
@@ -535,7 +581,7 @@
 
     // Refresh the latest bookings right before checking for a clash, to minimize race conditions.
     await loadBookings();
-    const overlap = bookings.some((b) => b.roomKey === selectedRoom && rangesOverlap(checkIn, checkOut, b.checkIn, b.checkOut));
+    const overlap = bookings.some((b) => b.roomKey === selectedRoom && b.status !== 'declined' && rangesOverlap(checkIn, checkOut, b.checkIn, b.checkOut));
     if (overlap) return showError(ROOMS[selectedRoom].name + t('errOverlap'));
 
     const { discounted, totalUsd, totalVnd } = computePrice(selectedRoom, nights);
@@ -588,6 +634,25 @@
     document.getElementById('hb-confirm').style.display = 'none';
     document.getElementById('hb-form').style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ---------- Check my booking ----------
+  const normContact = (s) => String(s == null ? '' : s).toLowerCase().replace(/[\s\-.+()@]/g, '').replace(/^0+/, '');
+  document.getElementById('hb-check-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const ref = document.getElementById('c-ref').value.trim().toUpperCase();
+    const contact = normContact(document.getElementById('c-contact').value);
+    const out = document.getElementById('hb-check-result');
+    if (!ref || !contact) { out.innerHTML = `<div class="hb-result notfound">${t('checkNotFound')}</div>`; return; }
+    await loadBookings();
+    const b = bookings.find((x) => String(x.id).slice(-6).toUpperCase() === ref &&
+      (normContact(x.phone) === contact || normContact(x.socialHandle) === contact));
+    if (!b) { out.innerHTML = `<div class="hb-result notfound">${t('checkNotFound')}</div>`; return; }
+    const msgKey = { pending: 'resPending', upcoming: 'resApproved', 'checked-in': 'resCheckedIn', 'checked-out': 'resCheckedOut', declined: 'resDeclined' }[b.status] || 'resPending';
+    out.innerHTML = `<div class="hb-result">
+      <div class="hb-result-status">${t(msgKey)}</div>
+      <div>${ROOMS[b.roomKey].name} · ${formatDate(b.checkIn)} → ${formatDate(b.checkOut)}</div>
+    </div>`;
   });
 
   // ---------- Init ----------

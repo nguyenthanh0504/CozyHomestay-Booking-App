@@ -191,6 +191,8 @@
 
   .hb-stage-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
   .hb-stage-pill.pending { background: rgba(227,179,65,0.18); color: #E3B341; }
+  .hb-stage-pill.declined { background: rgba(217,105,79,0.16); color: var(--danger); }
+  .hb-toggle { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-dim); cursor: pointer; white-space: nowrap; }
   .hb-stage-pill.upcoming { background: var(--brass-soft); color: var(--brass); }
   .hb-stage-pill.checked-in { background: rgba(109,190,156,0.18); color: var(--ok); }
   .hb-stage-pill.checked-out { background: rgba(159,179,174,0.18); color: var(--ink-dim); }
@@ -319,6 +321,7 @@
       <div class="hb-search">
         🔍 <input type="text" id="hb-search-input" />
       </div>
+      <label class="hb-toggle"><input type="checkbox" id="hb-show-declined" /> <span id="t-showDeclined"></span></label>
       <button class="hb-icon-btn" id="hb-refresh-btn" type="button">⟳</button>
       <button class="hb-export-btn" id="hb-export-btn" type="button"></button>
     </div>
@@ -377,7 +380,7 @@
       syncError: "Couldn't reach the shared sheet — showing the last data loaded.",
       footerNote: 'Shared with everyone — data lives in your Google Sheet, not this browser. Refreshes automatically every 20 seconds.',
       checkInBtn: 'Check in', checkOutBtn: 'Check out', approveBtn: '✓ Approve', declineBtn: '✕ Decline',
-      stagePending: '🟡 Pending', stageUpcoming: '🕓 Upcoming', stageCheckedIn: '🟢 Checked in', stageCheckedOut: '⚪ Checked out',
+      stagePending: '🟡 Pending', stageDeclined: '❌ Declined', showDeclined: 'Show declined', stageUpcoming: '🕓 Upcoming', stageCheckedIn: '🟢 Checked in', stageCheckedOut: '⚪ Checked out',
       statusAvailable: '🔓 Available today', statusArrivingSuffix: ' arriving today', statusOccupiedPrefix: '🔒 Checked in — ', statusOccupiedMid: ' until ',
       statusPendingHoldPrefix: '🟡 Pending request holds room until '
     },
@@ -422,7 +425,7 @@
       syncError: 'Không thể kết nối với Google Sheet — đang hiển thị dữ liệu gần nhất.',
       footerNote: 'Dữ liệu dùng chung — được lưu trong Google Sheet, không phải trên trình duyệt này. Tự động làm mới mỗi 20 giây.',
       checkInBtn: 'Nhận phòng', checkOutBtn: 'Trả phòng', approveBtn: '✓ Duyệt', declineBtn: '✕ Từ chối',
-      stagePending: '🟡 Chờ duyệt',
+      stagePending: '🟡 Chờ duyệt', stageDeclined: '❌ Đã từ chối', showDeclined: 'Hiện yêu cầu đã từ chối',
       stageUpcoming: '🕓 Sắp tới', stageCheckedIn: '🟢 Đã nhận phòng', stageCheckedOut: '⚪ Đã trả phòng',
       statusAvailable: '🔓 Còn trống hôm nay', statusArrivingSuffix: ' sẽ đến hôm nay', statusOccupiedPrefix: '🔒 Đã nhận phòng — ', statusOccupiedMid: ' đến ',
       statusPendingHoldPrefix: '🟡 Yêu cầu chờ duyệt giữ phòng đến '
@@ -491,6 +494,7 @@
   let bookings = [];
   let editingId = null;
   let search = '';
+  let showDeclined = false;
   let selectedRoom = 'cozy';
   let lastSyncError = '';
 
@@ -670,7 +674,7 @@
   // ---------- Table data ----------
   function getFiltered() {
     const q = search.trim().toLowerCase();
-    let list = [...bookings].sort((a, b) => (a.checkIn < b.checkIn ? 1 : -1));
+    let list = [...bookings].filter((b) => showDeclined || b.status !== 'declined').sort((a, b) => (a.checkIn < b.checkIn ? 1 : -1));
     if (!q) return list;
     return list.filter((b) =>
       b.guestName.toLowerCase().includes(q) ||
@@ -683,6 +687,7 @@
 
   function stagePillHtml(status) {
     if (status === 'pending') return `<span class="hb-stage-pill pending">${t('stagePending')}</span>`;
+    if (status === 'declined') return `<span class="hb-stage-pill declined">${t('stageDeclined')}</span>`;
     if (status === 'checked-in') return `<span class="hb-stage-pill checked-in">${t('stageCheckedIn')}</span>`;
     if (status === 'checked-out') return `<span class="hb-stage-pill checked-out">${t('stageCheckedOut')}</span>`;
     return `<span class="hb-stage-pill upcoming">${t('stageUpcoming')}</span>`;
@@ -780,17 +785,19 @@
   }
 
   async function declineBooking(id) {
-    const previous = bookings;
-    bookings = bookings.filter((x) => x.id !== id);
+    const b = bookings.find((x) => x.id === id);
+    if (!b) return;
+    b.status = 'declined';
     renderAll();
-    const ok = await persistDelete(id);
-    if (ok) { showToast(t('toastDeclined')); } else { bookings = previous; renderAll(); }
+    const ok = await persistUpsert(b);
+    if (ok) showToast(t('toastDeclined'));
   }
 
   // ---------- Render: stats ----------
   function renderStats() {
-    const totalUsd = bookings.reduce((s, b) => s + Number(b.total || 0), 0);
-    const totalVnd = bookings.reduce((s, b) => {
+    const activeBookings = bookings.filter((b) => b.status !== 'declined');
+    const totalUsd = activeBookings.reduce((s, b) => s + Number(b.total || 0), 0);
+    const totalVnd = activeBookings.reduce((s, b) => {
       const room = ROOMS[b.roomKey];
       const v = b.totalVND != null ? Number(b.totalVND) : Number(b.total || 0) * (room ? room.priceVND / room.price : 0);
       return s + v;
@@ -799,7 +806,7 @@
     const checkedInNow = Object.keys(ROOMS).filter((rk) => bookings.some((b) => b.roomKey === rk && b.status === 'checked-in')).length;
     const pendingCount = bookings.filter((b) => b.status === 'pending').length;
     document.getElementById('hb-stats').innerHTML = `
-      <div class="hb-stat"><div class="hb-stat-label">${t('statTotalBookings')}</div><div class="hb-stat-value">${bookings.length}</div></div>
+      <div class="hb-stat"><div class="hb-stat-label">${t('statTotalBookings')}</div><div class="hb-stat-value">${activeBookings.length}</div></div>
       <div class="hb-stat"><div class="hb-stat-label">${t('statTotalRevenue')}</div><div class="hb-stat-value">${revenue.primary}<small>${revenue.secondary}</small></div></div>
       <div class="hb-stat"><div class="hb-stat-label">${t('statCheckedIn')}</div><div class="hb-stat-value">${checkedInNow} / 2</div></div>
       <div class="hb-stat"><div class="hb-stat-label">${t('statPending')}</div><div class="hb-stat-value">${pendingCount}</div></div>
@@ -836,6 +843,7 @@
     document.getElementById('hb-submit-btn').textContent = editingId ? t('btnSave') : t('btnAdd');
     document.getElementById('hb-cancel-btn').textContent = t('btnCancel');
     document.getElementById('hb-export-btn').textContent = t('exportBtn');
+    document.getElementById('t-showDeclined').textContent = t('showDeclined');
     document.getElementById('hb-search-input').placeholder = t('searchPh');
     document.getElementById('f-guestName').placeholder = lang === 'vi' ? 'vd: Nguyễn Văn A' : 'e.g. Amara Okafor';
     document.getElementById('f-phone').placeholder = lang === 'vi' ? '090 123 4567' : '+1 555 010 2938';
@@ -942,7 +950,7 @@
     if (nights <= 0) return showError(t('errNights'));
     if (!guests || guests < 1) return showError(t('errGuests'));
 
-    const overlap = bookings.some((b) => b.roomKey === selectedRoom && b.id !== editingId && rangesOverlap(checkIn, checkOut, b.checkIn, b.checkOut));
+    const overlap = bookings.some((b) => b.roomKey === selectedRoom && b.id !== editingId && b.status !== 'declined' && rangesOverlap(checkIn, checkOut, b.checkIn, b.checkOut));
     if (overlap) return showError(ROOMS[selectedRoom].name + t('errOverlap'));
 
     const { discounted, totalUsd, totalVnd } = computePrice(selectedRoom, nights);
@@ -1030,6 +1038,7 @@
     showToast(t('toastExport'));
   });
 
+  document.getElementById('hb-show-declined').addEventListener('change', (e) => { showDeclined = e.target.checked; renderTable(); });
   document.getElementById('hb-refresh-btn').addEventListener('click', () => loadBookings(true));
 
   // ---------- Init ----------
