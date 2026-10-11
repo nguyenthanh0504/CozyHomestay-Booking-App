@@ -231,6 +231,23 @@
     .hb-ledger-head { align-items: stretch; }
     .hb-toolbar { width: 100%; justify-content: space-between; }
   }
+
+  /* layout fixes */
+  .hb-grid > * { min-width: 0; }
+  .hb-grid .span-all { grid-column: 1 / -1; }
+  .hb-field input[type="date"] { min-width: 0; }
+  .hb-social-row input { min-width: 0; }
+  @media (max-width: 640px) {
+    body { padding: 20px 14px 48px; }
+    .hb-field:empty { display: none; }
+    .hb-panel { padding: 20px 16px 18px; }
+    .hb-grid .span-2, .hb-grid .span-m { grid-column: 1 / -1; }
+    .hb-social-row select { flex: 0 0 128px; }
+    .hb-field-row { grid-template-columns: 1fr; }
+    .hb-toolbar { flex-wrap: wrap; }
+    .hb-search { flex: 1 1 100%; }
+    .hb-search input { width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -268,7 +285,7 @@
         <input type="text" id="f-country" />
       </div>
 
-      <div class="hb-field" style="grid-column: span 4;">
+      <div class="hb-field span-all">
         <label><span id="t-labelSocial"></span> <span class="hb-label-note" id="t-labelSocialHint"></span></label>
         <div class="hb-social-row">
           <select id="f-socialMethod">
@@ -285,7 +302,7 @@
         <label id="t-labelRoom"></label>
         <div class="hb-room-choice" id="hb-room-choice"></div>
       </div>
-      <div class="hb-field">
+      <div class="hb-field span-m">
         <label id="t-labelGuests"></label>
         <input type="number" id="f-guests" min="1" value="1" />
       </div>
